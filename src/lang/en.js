@@ -24,6 +24,7 @@ export default {
     },
     common: {
         view: 'View',
+        recharge: 'Recharge',
         delete: 'Delete',
         deleteMessage: '<p>Are you sure you would like to delete<</p><p style="font-weight: bold">{id}?</p>',
         deleted:'{type} deleted',

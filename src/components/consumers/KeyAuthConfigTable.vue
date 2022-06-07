@@ -1,7 +1,7 @@
 <template>
     <div id="config">
         <Row style="margin-bottom: 10px">
-            <Col span="12"><h1>Key Authentication credentials</h1></Col>
+            <Col span="12"><h1>Key Auth:</h1></Col>
             <Col span="12" style="text-align:right;position: absolute;top: 50%;right: 0px">
                 <Button type="primary" size="small" @click="showModal=true">Create a Credential</Button>
             </Col>

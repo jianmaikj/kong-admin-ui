@@ -63,7 +63,31 @@
       <FormItem :label-width="300" v-for="field in flatFields" :label="field.fieldName+':'"
                 :key="field.fieldName">
 
-        <Input v-if="field.fieldType==='string'" :name="field.fieldName" class="text_input"
+        <DatePicker v-if="field.fieldName==='config.start_time'" placeholder="Select date and time"
+                    :value="field.defaultValue&&new Date(field.defaultValue)||new Date()"
+                    style="width: 200px"
+                    :confirm="true"
+                    @on-change="valueChange($event,field)"
+        ></DatePicker>
+
+        <DatePicker v-if="field.fieldName==='config.end_time'" placeholder="Select date and time"
+                    :value="field.defaultValue&&new Date(field.defaultValue)"
+                    style="width: 200px"
+                    :confirm="true"
+                    :editable="true"
+                    @on-change="valueChange($event,field)"
+        ></DatePicker>
+
+        <Select v-if="field.elementType==='select'" :name="field.fieldName" class="text_input"
+                @on-change="valueChange($event,field)"
+                :value="field.defaultValue"
+
+        >
+          <Option v-for="value in field.selectValues" :value="value" :key="value">{{ value }}</Option>
+        </Select>
+
+        <Input v-if="field.fieldType==='string'&&field.elementType!=='select'" :name="field.fieldName"
+               class="text_input"
                @input="valueChange($event,field)"
                :value="field.defaultValue"></Input>
         <Input v-if="field.fieldType==='array'&&field.elementType==='string'" :name="field.fieldName"
@@ -73,18 +97,48 @@
         <Input v-if="field.fieldType==='set'&&field.elementType==='string'" :name="field.fieldName"
                @input="valueChange($event,field)" placeholder="Split by comma"
                class="text_input" :value="field.defaultValue"></Input>
-        <InputNumber v-if="field.fieldType==='number'" :name="field.fieldName" class="text_input"
+        <InputNumber v-if="field.fieldType==='number'&&!field.fieldName.endsWith('_fee')" :name="field.fieldName"
+                     class="text_input"
                      @input="valueChange($event,field)"
                      :value="field.defaultValue"></InputNumber>
-        <InputNumber v-if="field.fieldType==='integer'" :name="field.fieldName" class="text_input"
+        <InputNumber v-if="field.fieldType==='integer'&&!field.fieldName.endsWith('_time')" :name="field.fieldName"
+                     class="text_input"
                      @input="valueChange($event,field)"
                      :value="field.defaultValue"></InputNumber>
+        <div v-if="field.fieldType==='number'&&field.fieldName.endsWith('_fee')" >
+          <Input :name="field.fieldName"
+                 class="text_input"
+                 @input="valueChange($event,field)"
+                 :value="field.defaultValue">
+            <span slot="prepend">￥</span>
+          </Input>
+          <span>First Fee:</span>
+        </div>
         <i-switch v-if="field.fieldType==='boolean'" :name="field.fieldName" size="large"
                   @input="valueChange($event,field)"
                   :value="field.defaultValue">
           <span slot="open">true</span>
           <span slot="close">false</span>
         </i-switch>
+        <div v-if="field.fieldType==='map'">
+          <FormItem :label-width="300" label="key: "
+                    key="mapKey">
+            <Input name="key" class="text_input"
+                   :value="field.defaultValue?(Object.entries(field.defaultValue).length?Object.keys(field.defaultValue)[0]:null):null"
+                   @input="valueChange($event,field)"
+            ></Input>
+          </FormItem>
+          <FormItem :label-width="300" :label="mapFiled.fieldName+': ' " v-for="mapFiled of field.mapValueFields.fields"
+                    :key="mapFiled.fieldName">
+            <!--          <div v-for="mapFiled of field.mapValueFields.fields">-->
+            <Input v-if="mapFiled.fieldType==='set'&&mapFiled.elementType==='string'" :name="mapFiled.fieldName"
+                   class="text_input" :value="mapFiled.defaultValue"></Input>
+            <InputNumber v-if="mapFiled.fieldType==='number'" :name="mapFiled.fieldName" class="text_input"
+                         @input="valueChange($event,field,mapFiled)"
+                         :value="Object.entries(field.defaultValue).length?Object.entries(field.defaultValue)[0][1][mapFiled.fieldName]||null:null"></InputNumber>
+            <!--          </div>-->
+          </FormItem>
+        </div>
       </FormItem>
 
 
@@ -96,6 +150,7 @@
 </template>
 
 <script>
+
 export default {
   name: "AddPlugin",
   data() {
@@ -174,8 +229,14 @@ export default {
         if (!formItem.service) {
           formItem.service = {};
         }
+        if (formItem.name === 'my-rate-limit') {
+          if (!formItem.config.start_time) {
+            formItem.config.start_time = new Date().getTime()
+          }
+
+        }
         this.formItem = formItem;
-        console.log(JSON.stringify(this.formItem));
+        // console.log(JSON.stringify(this.formItem));
         this.loadPlugins();
         this.loadConsumers();
         this.loadServices();
@@ -192,14 +253,15 @@ export default {
           this.schemaFields = response.data.fields;
           this.flatFields = [];
           this.unpackFields(this.schemaFields, 'config');
-          console.log(JSON.stringify(this.flatFields));
-          for (let field of this.flatFields) {
-            if (field.fieldType === 'map' || field.elementType === 'record') {
-              this.$Message.warning('Sorry,We not support this plugin yet');
-              this.flatFields = [];
-              break;
-            }
-          }
+          console.log('flatFields>>', this.flatFields)
+          // console.log(JSON.stringify(this.flatFields));
+          // for (let field of this.flatFields) {
+          //   // if (field.fieldType === 'map' || field.elementType === 'record') {
+          //   //   this.$Message.warning('Sorry,We not support this plugin yet');
+          //   //   this.flatFields = [];
+          //   //   break;
+          //   // }
+          // }
         });
       }
 
@@ -213,14 +275,30 @@ export default {
         let type = fieldValue.type;
 
         if (type === 'record') {
-          let fieldObj = Object.entries(fieldValue.fields);
+          let fieldObj = fieldValue.fields
           this.unpackRecord(fieldObj, parent + '.' + fieldName);
         } else {
+          if (type === 'map') {
+            let mapFieldValues = fieldValue.values.fields
+            fieldValue.values.fields = mapFieldValues.map((mapField) => {
+              let mapFieldObj = Object.entries(mapField)
+              let mapFieldName = mapFieldObj[0][0];
+              let mapFieldValue = mapFieldObj[0][1];
+              let mapType = mapFieldValue.type;
+              let mapDefaultValue = mapFieldValue.default || null;
+              return this.formField(mapFieldName, mapType, mapType, mapDefaultValue);
+            })
+            fieldValue.values.key = fieldValue.keys
+          }
+
           let elementType;
-          let defaultValue = fieldValue.default;
+          let defaultValue = fieldValue.default || null;
           if (fieldValue.elements) {
-            elementType = fieldValue.elements.type;
+            elementType = fieldValue.one_of ? 'select' : fieldValue.elements.type;
             defaultValue = fieldValue.elements.default;
+          } else if (fieldValue.one_of) {
+            elementType = 'select'
+            fieldValue.values = fieldValue.one_of
           }
           let finalFieldName = parent + '.' + fieldName;
           let formField = this.formField(finalFieldName, type, elementType, defaultValue, fieldValue.values);
@@ -232,23 +310,33 @@ export default {
 
     },
     unpackRecord(fields, parent) {
+      console.log('fields>>>',fields)
       for (let i = 0; i < fields.length; i++) {
         let field = fields[i];
-        let fieldObj = Object.entries(field[1])[0];
+        if (!field){
+          continue
+        }
+        let fieldObj = Object.entries(field)[0];
         let fieldName = fieldObj[0];
+        console.log('fieldObj>>>',fieldObj,isNaN(fieldName))
         if (isNaN(fieldName)) {
           let elementType;
           let fieldObj1 = fieldObj[1];
-          let defaultValue = fieldObj1.default;
+
+          let defaultValue = fieldObj1.default || null;
           if (fieldObj1.elements) {
             elementType = fieldObj1.elements.type;
             defaultValue = fieldObj1.elements.default;
+          } else if (fieldObj1.one_of) {
+            elementType = 'select'
+            fieldObj1.values = fieldObj1.one_of
           }
           let finalFieldName = parent + '.' + fieldName;
           if (fieldObj1.type === 'record') {
             this.unpackFields(fieldObj1.fields, finalFieldName);
             continue;
           }
+          console.log('defaultValue>>>',defaultValue)
           let formField = this.formField(finalFieldName, fieldObj1.type, elementType, defaultValue, fieldObj1.values);
 
           this.flatFields.push(formField);
@@ -281,14 +369,17 @@ export default {
           }
         }
       }
-
-      return {
+      let res = {
         fieldName: fieldName,
         fieldType: fieldType,
         defaultValue: defaultValue,
         elementType: elementType,
         mapValueFields: mapValueFields
       }
+      if (elementType === 'select') {
+        res['selectValues'] = mapValueFields
+      }
+      return res
     },
     loadConsumers() {
       let url = '/consumers?size=1000';
@@ -313,11 +404,18 @@ export default {
       });
 
     },
-    valueChange: function (val, formField) {
-      if (val == null) {
+    valueChange: function (val, formField, mapField) {
+      console.log('val change:' + val, typeof val, formField);
+      if (formField.fieldName === 'config.start_time') {
+        val = val == null ? Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), new Date().getUTCDate()) : new Date(val).getTime()
+        console.log('val>>>', val)
+      } else if (formField.fieldName === 'config.end_time') {
+        val = val && new Date(val).getTime()
+      }
+      if (val == null || typeof val === 'object') {
         return;
       }
-      console.log('val change:' + val);
+
       let fieldName = formField.fieldName;
       let fieldType = formField.fieldType;
       let elementType = formField.elementType;
@@ -337,6 +435,10 @@ export default {
         });
 
       }
+      if (formField.fieldName === 'config.start_time' || formField.fieldName === 'config.end_time') {
+
+        console.log('val>>', val)
+      }
       if (fieldType === 'string' && val === '') {
         val = null;
       }
@@ -352,13 +454,37 @@ export default {
           }
           obj = obj[name];
         } else {
-          obj[name] = val;
+          if (fieldType === 'map') {
+            if (!obj[name]) {
+              obj[name] = {};
+            }
+            let mapEntries = Object.entries(obj[name])
+            // console.log('mapField',mapField)
+            let mapValue = mapEntries.length ? mapEntries[0][1] : null,
+                mapKey = mapEntries.length ? mapEntries[0][0] : null
+            // mapEntries[0][0]
+            if (mapField) {
+              if (!mapKey) {
+                this.$Message.error('请先输入Key')
+                return;
+              }
+              if (!obj[name][mapKey]) {
+                obj[name][mapKey] = {}
+              }
+              obj[name][mapKey][mapField.fieldName] = val
+            } else {
+              obj[name] = {[val]: mapValue}
+            }
+          } else {
+            obj[name] = val;
+          }
         }
 
       }
     },
     savePlugin() {
       let _this = this;
+      console.log(_this.formItem)
       let formData = JSON.parse(JSON.stringify(this.formItem));
 
       if (!formData.service.id) {

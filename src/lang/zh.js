@@ -24,6 +24,7 @@ export default {
     },
     common: {
         view: '查看',
+        recharge: '充值',
         delete: '删除',
         deleteMessage: '<p>是否删除</p><p style="font-weight: bold">{id}?</p>',
         deleted:'{type} 已删除',

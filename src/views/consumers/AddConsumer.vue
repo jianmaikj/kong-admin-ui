@@ -1,149 +1,184 @@
 <template>
-    <div>
-        <Breadcrumb>
-            <BreadcrumbItem to="/">Home</BreadcrumbItem>
-            <BreadcrumbItem to="/consumers">Consumer</BreadcrumbItem>
-            <BreadcrumbItem v-if="!consumerId">Add Consumer</BreadcrumbItem>
-            <BreadcrumbItem v-else>{{consumerId}}</BreadcrumbItem>
-        </Breadcrumb>
+  <div>
+    <Breadcrumb>
+      <BreadcrumbItem to="/">Home</BreadcrumbItem>
+      <BreadcrumbItem to="/consumers">Consumer</BreadcrumbItem>
+      <BreadcrumbItem v-if="!consumerId">Add Consumer</BreadcrumbItem>
+      <BreadcrumbItem v-else>{{ consumerId }}</BreadcrumbItem>
+    </Breadcrumb>
 
-        <Form :model="formItem" :label-width="120" style="margin-top: 20px">
-            <FormItem label="username:">
-                <Input v-model="formItem.username" placeholder="Enter username ..." class="text_input"></Input>
-                <span class="field_desc">The unique username of the consumer. You must send either this field or custom_id with the request.</span>
-            </FormItem>
-            <FormItem label="custom_id:">
-                <Input v-model="formItem.custom_id" placeholder="Enter custom_id ..." class="text_input"></Input>
-                <span class="field_desc">Field for storing an existing unique ID for the consumer - useful for mapping Kong with users in your existing database. You must send either this field or username with the request.</span>
-            </FormItem>
-            <FormItem>
-                <Button type="primary" @click="saveConsumer">Save</Button>
-            </FormItem>
-        </Form>
-
-        <div id="plugins" v-if="consumerId">
-            <Row style="margin-bottom: 10px">
-                <Col span="12"><h1>Plugins:</h1></Col>
-                <Col span="12" style="text-align:right;position: absolute;top: 50%;right: 0px">
-                    <Button type="primary" size="small" @click="addPlugin()">Add plugin</Button>
-                </Col>
-            </Row>
-            <PluginTable v-bind:plugins="plugins"></PluginTable>
-        </div>
-
-        <HMACAuthConfigTable  v-bind:consumerId="consumerId" v-if="consumerId"></HMACAuthConfigTable>
-        <OAuth2ConfigTable  v-bind:consumerId="consumerId" v-if="consumerId"></OAuth2ConfigTable>
-        <BasicAuthConfigTable  v-bind:consumerId="consumerId" v-if="consumerId"></BasicAuthConfigTable>
-        <KeyAuthConfigTable  v-bind:consumerId="consumerId" v-if="consumerId"></KeyAuthConfigTable>
-        <JWTConfigTable  v-bind:consumerId="consumerId" v-if="consumerId"></JWTConfigTable>
-        <ACLConfigTable  v-bind:consumerId="consumerId" v-if="consumerId"></ACLConfigTable>
-
-
+    <Form :model="formItem" :label-width="120" style="margin-top: 20px">
+      <FormItem label="username:">
+        <Input v-model="formItem.username" placeholder="Enter username ..." class="text_input"></Input>
+        <span class="field_desc">The unique username of the consumer. You must send either this field or custom_id with the request.</span>
+      </FormItem>
+      <FormItem label="custom_id:">
+        <Input v-model="formItem.custom_id" placeholder="Enter custom_id ..." class="text_input"></Input>
+        <span class="field_desc">Field for storing an existing unique ID for the consumer - useful for mapping Kong with users in your existing database. You must send either this field or username with the request.</span>
+      </FormItem>
+      <FormItem>
+        <Button type="primary" @click="saveConsumer">Save</Button>
+      </FormItem>
+    </Form>
+    <div id="orders" v-if="consumerId">
+      <Row style="margin-bottom: 10px">
+        <Col span="12"><h1>Orders Manage:</h1></Col>
+        <Col span="12" style="text-align:right;position: absolute;top: 50%;right: 0px">
+          <Button type="primary" size="small" @click="addPlugin()">Add plugin</Button>
+        </Col>
+      </Row>
+      <OrdersManager v-bind:consumerId="consumerId" v-bind:plugins="plugins" v-if="consumerId"></OrdersManager>
     </div>
+
+    <div id="plugins" v-if="consumerId">
+      <Row style="margin-bottom: 10px">
+        <Col span="12"><h1>Plugins:</h1></Col>
+        <Col span="12" style="text-align:right;position: absolute;top: 50%;right: 0px">
+          <Button type="primary" size="small" @click="addPlugin()">Add plugin</Button>
+        </Col>
+      </Row>
+      <PluginTable v-bind:plugins="plugins"></PluginTable>
+    </div>
+
+    <!--    <HMACAuthConfigTable v-bind:consumerId="consumerId" v-if="consumerId"></HMACAuthConfigTable>-->
+    <!--    <OAuth2ConfigTable v-bind:consumerId="consumerId" v-if="consumerId"></OAuth2ConfigTable>-->
+    <!--    <BasicAuthConfigTable v-bind:consumerId="consumerId" v-if="consumerId"></BasicAuthConfigTable>-->
+    <KeyAuthConfigTable v-bind:consumerId="consumerId" v-if="consumerId"></KeyAuthConfigTable>
+    <!--    <JWTConfigTable v-bind:consumerId="consumerId" v-if="consumerId"></JWTConfigTable>-->
+    <!--    <ACLConfigTable v-bind:consumerId="consumerId" v-if="consumerId"></ACLConfigTable>-->
+
+
+  </div>
 </template>
 
 <script>
-    import moment from 'moment'
-    import PluginTable from '@/components/plugins/PluginTable'
-    import HMACAuthConfigTable from '@/components/consumers/HMACAuthConfigTable'
-    import OAuth2ConfigTable from '@/components/consumers/OAuth2ConfigTable'
-    import BasicAuthConfigTable from '@/components/consumers/BasicAuthConfigTable'
-    import KeyAuthConfigTable from '@/components/consumers/KeyAuthConfigTable'
-    import JWTConfigTable from '@/components/consumers/JWTConfigTable'
-    import ACLConfigTable from '@/components/consumers/ACLConfigTable'
-    import EventBus from '@/event-bus'
+import moment from 'moment'
+import PluginTable from '@/components/plugins/PluginTable'
+// import HMACAuthConfigTable from '@/components/consumers/HMACAuthConfigTable'
+import OrdersManager from '@/components/consumers/OrdersManager'
+// import OAuth2ConfigTable from '@/components/consumers/OAuth2ConfigTable'
+// import BasicAuthConfigTable from '@/components/consumers/BasicAuthConfigTable'
+import KeyAuthConfigTable from '@/components/consumers/KeyAuthConfigTable'
+// import JWTConfigTable from '@/components/consumers/JWTConfigTable'
+// import ACLConfigTable from '@/components/consumers/ACLConfigTable'
+import EventBus from '@/event-bus'
+// import axios from 'axios';
 
-    export default {
-        name: "AddConsumer",
-        components:{PluginTable,HMACAuthConfigTable,OAuth2ConfigTable,BasicAuthConfigTable,KeyAuthConfigTable,JWTConfigTable,ACLConfigTable},
-        data() {
-            return {
-                formItem: {
-                    username: '',
-                    custom_id:''
-                },
-                consumerId: '',
-                serviceIdCanChanged: true,
-                plugins:[],
-                configHmacAuth:[]
-            }
-        },
-        mounted(){
-            this.consumerId = this.$route.params.id;
-            if(this.consumerId) {
-                this.loadConsumer();
-                this.loadPlugins();
-            }
-
-            EventBus.$on('pluginChange',({pluginId}) => {
-                for(let plugin of this.plugins) {
-                    if(plugin.id===pluginId) {
-                        this.loadPlugins();
-                        break;
-                    }
-                }
-            });
-
-        },
-        methods:{
-            saveConsumer() {
-                let _this = this;
-                if (this.formItem.username === '') {
-                    this.formItem.username = null;
-                }
-                if (this.formItem.custom_id === '') {
-                    this.formItem.custom_id = null;
-                }
-
-                if (!this.consumerId) {
-                    this._post('/consumers/', this.formItem, () => {
-                        _this.$router.go(-1);
-                    });
-                } else {
-                    //edit
-                    this._patch('/consumers/' + this.consumerId, this.formItem, () => {
-                        _this.$router.go(-1);
-                    });
-                }
-            },
-            loadConsumer() {
-                this._get('/consumers/'+this.consumerId,response =>{
-                    this.formItem=response.data;
-                });
-            },
-            loadPlugins(){
-                this._get('/consumers/' + this.consumerId +'/plugins', response => {
-                    this.plugins = response.data.data;
-                    this.plugins.map(function (plugin) {
-                        let createDate = moment.unix(plugin.created_at);
-                        plugin.createAtStr = createDate.format('YYYY-MM-DD HH:mm:ss');
-                    });
-                });
-
-            },
-            addPlugin(){
-                this.$router.push({path: `/plugins/add/consumer/${this.consumerId}`});
-            }
-        },
-        destroyed() {
-            EventBus.$off('pluginChange');
-        }
+export default {
+  name: "AddConsumer",
+  components: {
+    OrdersManager,
+    PluginTable,
+    KeyAuthConfigTable,
+  },
+  data() {
+    return {
+      formItem: {
+        username: '',
+        custom_id: ''
+      },
+      consumerId: '',
+      serviceIdCanChanged: true,
+      plugins: [],
+      orders: [],
+      configHmacAuth: []
     }
+  },
+  mounted() {
+    this.consumerId = this.$route.params.id;
+    if (this.consumerId) {
+      this.loadConsumer();
+      this.loadPlugins();
+    }
+
+    EventBus.$on('pluginChange', ({pluginId}) => {
+      for (let plugin of this.plugins) {
+        if (plugin.id === pluginId) {
+          this.loadPlugins();
+          break;
+        }
+      }
+    });
+
+  },
+  methods: {
+    saveConsumer() {
+      let _this = this;
+      if (this.formItem.username === '') {
+        this.formItem.username = null;
+      }
+      if (this.formItem.custom_id === '') {
+        this.formItem.custom_id = null;
+      }
+
+      if (!this.consumerId) {
+        this._post('/consumers/', this.formItem, () => {
+          _this.$router.go(-1);
+        });
+      } else {
+        //edit
+        this._patch('/consumers/' + this.consumerId, this.formItem, () => {
+          _this.$router.go(-1);
+        });
+      }
+    },
+    loadConsumer() {
+      this._get('/consumers/' + this.consumerId, response => {
+        this.formItem = response.data;
+      });
+    },
+    loadPlugins() {
+      const _this = this
+      this._get('/consumers/' + this.consumerId + '/plugins', response => {
+        _this.plugins = response.data.data;
+        _this.plugins.map(function (plugin, index) {
+          const {service, consumer} = plugin
+          let createDate = moment.unix(plugin.created_at);
+          plugin.createAtStr = createDate.format('YYYY-MM-DD HH:mm:ss');
+          //获取service-name
+          _this._get('/services/' + service.id, response => {
+            _this.$set(_this.plugins[index].service, 'name', response.data.name)
+          });
+          //获取usage
+          if (plugin.name === 'my-rate-limit') {
+            const limit = plugin.config.limit
+            _this._get(`/consumers/${consumer.id}/my-rate-limit/${service.id}/usage/${limit.name}/${limit.period}`, response => {
+              _this.$set(_this.plugins[index], 'usage', response.data.usage)
+            });
+          } else if (plugin.name === 'my-count') {
+            _this._get(`/consumers/${consumer.id}/my-count/${service.id}/usage/times`, response => {
+              _this.$set(_this.plugins[index], 'usage', response.data.usage)
+            });
+          }
+
+        });
+      });
+
+    },
+    addPlugin() {
+      this.$router.push({path: `/plugins/add/consumer/${this.consumerId}`});
+    }
+  },
+  destroyed() {
+    EventBus.$off('pluginChange');
+  }
+}
 </script>
 
 <style scoped>
-    .field_desc {
-        margin-left: 10px;
-    }
+.field_desc {
+  margin-left: 10px;
+}
 
-    .text_input {
-        max-width: 200px;
-    }
+.text_input {
+  max-width: 200px;
+}
 
-    .text_input_multiple {
-        max-width: 400px;
-    }
-    #plugin-config{
-        margin-top: 10px;
-    }
+.text_input_multiple {
+  max-width: 400px;
+}
+
+#plugin-config {
+  margin-top: 10px;
+}
 </style>
