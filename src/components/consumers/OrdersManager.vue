@@ -27,9 +27,9 @@
 </template>
 
 <script>
-import EventBus from '@/event-bus'
+import EventBus from 'src/event-bus'
 import RechargeModal from "./RechargeModal";
-import moment from "_moment@2.29.1@moment";
+import moment from "moment";
 
 export default {
   name: "OrdersManager",

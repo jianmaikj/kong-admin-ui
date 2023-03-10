@@ -25,7 +25,7 @@
 
       <FormItem label="route:">
         <Select v-model="formItem.route.id" filterable class="text_input_multiple" clearable>
-          <Option v-for="item in routes" :value="item.id" :key="item.id">{{ item.id }}
+          <Option v-for="item in routes" :value="item.id" :key="item.id">{{ item.name + '(' + item.paths[0] + ')' }}
           </Option>
         </Select>
         <span class="field_desc">If this plugin no need assign to a route,leave it blank.</span>
@@ -89,7 +89,9 @@
         <Input v-if="field.fieldType==='string'&&field.elementType!=='select'" :name="field.fieldName"
                class="text_input"
                @input="valueChange($event,field)"
-               :value="field.defaultValue"></Input>
+               :value="field.defaultValue">
+
+        </Input>
         <Input v-if="field.fieldType==='array'&&field.elementType==='string'" :name="field.fieldName"
                @input="valueChange($event,field)" placeholder="Split by comma"
                class="text_input" :value="field.defaultValue"></Input>
@@ -105,13 +107,13 @@
                      class="text_input"
                      @input="valueChange($event,field)"
                      :value="field.defaultValue"></InputNumber>
-        <div v-if="field.fieldType==='number'&&field.fieldName.endsWith('_fee')" >
-          <Input :name="field.fieldName"
-                 class="text_input"
-                 @input="valueChange($event,field)"
-                 :value="field.defaultValue">
+        <div v-if="field.fieldType==='number'&&field.fieldName.endsWith('_fee')">
+          <InputNumber :name="field.fieldName"
+                       class="text_input"
+                       @input="valueChange($event,field)"
+                       :value="field.defaultValue">
             <span slot="prepend">￥</span>
-          </Input>
+          </InputNumber>
           <span>First Fee:</span>
         </div>
         <i-switch v-if="field.fieldType==='boolean'" :name="field.fieldName" size="large"
@@ -120,23 +122,83 @@
           <span slot="open">true</span>
           <span slot="close">false</span>
         </i-switch>
-        <div v-if="field.fieldType==='map'">
-          <FormItem :label-width="300" label="key: "
-                    key="mapKey">
-            <Input name="key" class="text_input"
-                   :value="field.defaultValue?(Object.entries(field.defaultValue).length?Object.keys(field.defaultValue)[0]:null):null"
-                   @input="valueChange($event,field)"
-            ></Input>
-          </FormItem>
-          <FormItem :label-width="300" :label="mapFiled.fieldName+': ' " v-for="mapFiled of field.mapValueFields.fields"
-                    :key="mapFiled.fieldName">
-            <!--          <div v-for="mapFiled of field.mapValueFields.fields">-->
-            <Input v-if="mapFiled.fieldType==='set'&&mapFiled.elementType==='string'" :name="mapFiled.fieldName"
-                   class="text_input" :value="mapFiled.defaultValue"></Input>
-            <InputNumber v-if="mapFiled.fieldType==='number'" :name="mapFiled.fieldName" class="text_input"
-                         @input="valueChange($event,field,mapFiled)"
-                         :value="Object.entries(field.defaultValue).length?Object.entries(field.defaultValue)[0][1][mapFiled.fieldName]||null:null"></InputNumber>
-            <!--          </div>-->
+        <div
+            v-if="field.fieldType==='map'"
+        >
+          <Row :key="index" v-for="(item, index) in mapList[field.fieldName]">
+            <Col span="10">
+              <FormItem
+                  style="width: 100%"
+                  label="key: "
+                  key="mapKey"
+              >
+                <Input
+                    style="width: 100%"
+                    name="key"
+                    class="text_input"
+                    v-if="field.fieldName!=='config.extra_unit'"
+                    :value="field.defaultValue?(Object.entries(field.defaultValue).length?Object.keys(field.defaultValue)[0]:null):null"
+                    @input="valueChange($event,field)"
+                >
+                </Input>
+                <Select
+                    style="width: 260px"
+                    filterable
+                    clearable
+                    v-model="item.key"
+                    v-if="field.fieldName==='config.extra_unit'"
+                >
+                  <Option v-for="item in routes" :value="item.id" :key="item.id">
+                    {{ item.name + '(' + item.paths[0] + ')' }}
+                  </Option>
+                </Select>
+              </FormItem>
+
+            </Col>
+            <Col span="8" offset="1">
+              <FormItem
+                  :label-width="300"
+                  :label="mapFiled.fieldName+': ' "
+                  v-for="mapFiled of field.mapValueFields.fields"
+                  :key="mapFiled.fieldName"
+                  v-if="field.mapValueFields.type==='record'"
+              >
+                <!--          <div v-for="mapFiled of field.mapValueFields.fields">-->
+                <Input v-if="mapFiled.fieldType==='set'&&mapFiled.elementType==='string'" :name="mapFiled.fieldName"
+                       class="text_input" :value="mapFiled.defaultValue">
+
+                </Input>
+                <InputNumber v-if="mapFiled.fieldType==='number'" :name="mapFiled.fieldName" class="text_input"
+                             @input="valueChange($event,field,mapFiled)"
+                             :value="Object.entries(field.defaultValue).length?Object.entries(field.defaultValue)[0][1][mapFiled.fieldName]||null:null"></InputNumber>
+                <!--          </div>-->
+              </FormItem>
+              <FormItem
+                  label="value: "
+                  key="value"
+                  v-if="field.mapValueFields.type==='integer'"
+              >
+                <InputNumber
+                    name="value"
+                    style="width: 200px"
+                    class="text_input"
+                    v-model="item.value"
+                >
+                >
+                </InputNumber>
+                <!--          </div>-->
+              </FormItem>
+            </Col>
+            <Col span="4" offset="1">
+              <Button @click="handleRemove(field.fieldName,index)">Delete</Button>
+            </Col>
+          </Row>
+          <FormItem>
+            <Row>
+              <Col span="12">
+                <Button type="dashed" long @click="handleAdd(field.fieldName)" icon="md-add">Add item</Button>
+              </Col>
+            </Row>
           </FormItem>
         </div>
       </FormItem>
@@ -150,6 +212,8 @@
 </template>
 
 <script>
+
+import {deepClone} from "../../utils";
 
 export default {
   name: "AddPlugin",
@@ -171,6 +235,9 @@ export default {
       services: [],
       routes: [],
       runOns: ['first', 'second', 'all'],
+      mapList: {
+        'config.extra_unit': []
+      },
     }
   },
   watch: {
@@ -193,7 +260,6 @@ export default {
       set(newValue) {
         if (newValue) {
           this.formItem.service.id = newValue;
-          this.loadRoutes();
         } else {
           this.formItem.service.id = null;
         }
@@ -212,6 +278,9 @@ export default {
       this.loadConsumers();
       this.loadServices();
     }
+    setTimeout(()=>{
+      this.loadRoutes();
+    },1000)
 
 
   },
@@ -236,6 +305,16 @@ export default {
 
         }
         this.formItem = formItem;
+        if (formItem.config.extra_unit){
+          for (const [k,v] of Object.entries(formItem.config.extra_unit)){
+            this.mapList["config.extra_unit"].push({
+              key:k,
+              value:v
+            })
+          }
+          // Object.entries(formItem.config.extra_unit).map((v)=>)
+          formItem.config.extra_unit={}
+        }
         // console.log(JSON.stringify(this.formItem));
         this.loadPlugins();
         this.loadConsumers();
@@ -249,19 +328,12 @@ export default {
     },
     loadPluginSchema() {
       if (this.name) {
-        this._get('/plugins/schema/' + this.name, response => {
-          this.schemaFields = response.data.fields;
+        this._get('/schemas/plugins/' + this.name, response => {
+          // console.log('this.schemaFields>', response.data.fields.splice(-1));
+          this.schemaFields = response.data.fields.splice(-1)[0].config.fields;
+
           this.flatFields = [];
           this.unpackFields(this.schemaFields, 'config');
-          console.log('flatFields>>', this.flatFields)
-          // console.log(JSON.stringify(this.flatFields));
-          // for (let field of this.flatFields) {
-          //   // if (field.fieldType === 'map' || field.elementType === 'record') {
-          //   //   this.$Message.warning('Sorry,We not support this plugin yet');
-          //   //   this.flatFields = [];
-          //   //   break;
-          //   // }
-          // }
         });
       }
 
@@ -273,22 +345,24 @@ export default {
         let fieldName = entries[0][0];
         let fieldValue = entries[0][1];
         let type = fieldValue.type;
-
         if (type === 'record') {
           let fieldObj = fieldValue.fields
           this.unpackRecord(fieldObj, parent + '.' + fieldName);
         } else {
           if (type === 'map') {
-            let mapFieldValues = fieldValue.values.fields
-            fieldValue.values.fields = mapFieldValues.map((mapField) => {
-              let mapFieldObj = Object.entries(mapField)
-              let mapFieldName = mapFieldObj[0][0];
-              let mapFieldValue = mapFieldObj[0][1];
-              let mapType = mapFieldValue.type;
-              let mapDefaultValue = mapFieldValue.default || null;
-              return this.formField(mapFieldName, mapType, mapType, mapDefaultValue);
-            })
-            fieldValue.values.key = fieldValue.keys
+            if (fieldValue.values.fields){
+              let mapFieldValues = fieldValue.values.fields
+              fieldValue.values.fields = mapFieldValues && mapFieldValues.map((mapField) => {
+                let mapFieldObj = Object.entries(mapField)
+                let mapFieldName = mapFieldObj[0][0];
+                let mapFieldValue = mapFieldObj[0][1];
+                let mapType = mapFieldValue.type;
+                let mapDefaultValue = mapFieldValue.default || null;
+                return this.formField(mapFieldName, mapType, mapType, mapDefaultValue);
+              })
+              fieldValue.values.key = fieldValue.keys
+            }
+
           }
 
           let elementType;
@@ -310,15 +384,14 @@ export default {
 
     },
     unpackRecord(fields, parent) {
-      console.log('fields>>>',fields)
       for (let i = 0; i < fields.length; i++) {
         let field = fields[i];
-        if (!field){
+        if (!field) {
           continue
         }
         let fieldObj = Object.entries(field)[0];
         let fieldName = fieldObj[0];
-        console.log('fieldObj>>>',fieldObj,isNaN(fieldName))
+        // console.log('fieldObj>>>', fieldObj, isNaN(fieldName))
         if (isNaN(fieldName)) {
           let elementType;
           let fieldObj1 = fieldObj[1];
@@ -336,11 +409,8 @@ export default {
             this.unpackFields(fieldObj1.fields, finalFieldName);
             continue;
           }
-          console.log('defaultValue>>>',defaultValue)
           let formField = this.formField(finalFieldName, fieldObj1.type, elementType, defaultValue, fieldObj1.values);
-
           this.flatFields.push(formField);
-
           this.valueChange(formField.defaultValue, formField);
 
         }
@@ -351,6 +421,7 @@ export default {
       let array = fieldName.split('.');
       let obj = this.formItem.config;
       for (let i = 1; i < array.length; i++) {
+
         let name = array[i];
         if (i < array.length - 1) {
           //not the last one
@@ -396,6 +467,7 @@ export default {
     loadRoutes() {
       this.routes = [];
       let url = '/routes?size=1000';
+      console.log('this.formItem.service>',this.formItem.service)
       if (this.formItem.service.id) {
         url = '/services/' + this.formItem.service.id + '/routes'
       }
@@ -405,10 +477,9 @@ export default {
 
     },
     valueChange: function (val, formField, mapField) {
-      console.log('val change:' + val, typeof val, formField);
+      console.log('val change:' + val, formField.fieldName, formField);
       if (formField.fieldName === 'config.start_time') {
         val = val == null ? Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), new Date().getUTCDate()) : new Date(val).getTime()
-        console.log('val>>>', val)
       } else if (formField.fieldName === 'config.end_time') {
         val = val && new Date(val).getTime()
       }
@@ -484,8 +555,24 @@ export default {
     },
     savePlugin() {
       let _this = this;
-      console.log(_this.formItem)
-      let formData = JSON.parse(JSON.stringify(this.formItem));
+      // console.log(_this.formItem,_this.formItem.config.extra_unit)
+
+      const formData = deepClone(this.formItem)
+
+      const extra_config = this.mapList['config.extra_unit']
+      if (extra_config.length) {
+        let extra_data = {}
+        for (let i in extra_config) {
+          // console.log('i???',i)
+          const key=extra_config[i].key,value = extra_config[i].value
+          if(key&&value){
+
+            extra_data[key] = value
+          }
+
+        }
+        formData.config['extra_unit']=extra_data
+      }
 
       if (!formData.service.id) {
         formData.service = null;
@@ -514,6 +601,30 @@ export default {
     },
     isKong2() {
       return localStorage.kongVersion.startsWith('2');
+    },
+    handleAdd(filedName) {
+      if (!filedName) {
+        return
+      }
+      if (!this.mapList[filedName]) {
+        this.mapList[filedName] = []
+      }
+
+      this.mapList[filedName].push({
+        key: null,
+        value: null,
+        index: this.mapList.length,
+        status: 1
+      });
+      // console.log('mapList>', this.mapList)
+    },
+    handleRemove(filedName, index) {
+      if (!filedName) {
+        return
+      }
+        this.mapList[filedName].splice(index, 1)
+      console.log('this.mapList[filedName]>',this.mapList[filedName])
+
     }
 
   }

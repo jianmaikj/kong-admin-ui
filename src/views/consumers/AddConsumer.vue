@@ -40,7 +40,8 @@
       <PluginTable v-bind:plugins="plugins"></PluginTable>
     </div>
 
-    <!--    <HMACAuthConfigTable v-bind:consumerId="consumerId" v-if="consumerId"></HMACAuthConfigTable>-->
+<!--    <HMACAuthConfigTable v-bind:consumerId="consumerId" v-if="consumerId"></HMACAuthConfigTable>-->
+    <MySignAuthV1ConfigTable v-bind:consumerId="consumerId" v-if="consumerId"></MySignAuthV1ConfigTable>
     <!--    <OAuth2ConfigTable v-bind:consumerId="consumerId" v-if="consumerId"></OAuth2ConfigTable>-->
     <!--    <BasicAuthConfigTable v-bind:consumerId="consumerId" v-if="consumerId"></BasicAuthConfigTable>-->
     <KeyAuthConfigTable v-bind:consumerId="consumerId" v-if="consumerId"></KeyAuthConfigTable>
@@ -54,7 +55,7 @@
 <script>
 import moment from 'moment'
 import PluginTable from '@/components/plugins/PluginTable'
-// import HMACAuthConfigTable from '@/components/consumers/HMACAuthConfigTable'
+import MySignAuthV1ConfigTable from '@/components/consumers/MySignAuthV1ConfigTable'
 import OrdersManager from '@/components/consumers/OrdersManager'
 // import OAuth2ConfigTable from '@/components/consumers/OAuth2ConfigTable'
 // import BasicAuthConfigTable from '@/components/consumers/BasicAuthConfigTable'
@@ -70,6 +71,7 @@ export default {
     OrdersManager,
     PluginTable,
     KeyAuthConfigTable,
+    MySignAuthV1ConfigTable
   },
   data() {
     return {
